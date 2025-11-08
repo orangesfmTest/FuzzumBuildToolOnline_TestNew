@@ -39,15 +39,19 @@ jobs:
         run: |
           $path = "GameProject\Build\BuildSettings.json"
           if (!(Test-Path $path)) {
-            Write-Error "BuildSettings.json not found!"
-            exit 1
+              Write-Error "BuildSettings.json not found!"
+              exit 1
           }
+          $ndkPath = "$(Get-Location)\ndk\android-ndk-r25b"
+          # Преобразуем обратные слэши в прямые — совместимость с Ninja/C++
+          $ndkPath = $ndkPath -replace '\\', '/'
           $json = Get-Content $path | ConvertFrom-Json
-          $json.Android.NDK = "./ndk/android-ndk-r25b"
+          $json.Android.NDK = $ndkPath
           $json.Android.SDK = "C:/Android/android-sdk"
           $json.Android.Java = "C:/hostedtoolcache/windows/Java_Temurin-Hotspot_jdk/17.0.17-10/x64"
           $json | ConvertTo-Json -Depth 10 | Set-Content $path
-        shell: pwsh
+          Write-Host "Patched NDK to: $ndkPath"
+          shell: pwsh
 
       - name: Verify tools
         shell: cmd

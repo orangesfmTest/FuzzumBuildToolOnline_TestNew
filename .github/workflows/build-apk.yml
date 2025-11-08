@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: "11076708"
+          packages: |
+            platforms;android-33
+            build-tools;33.0.2
+            ndk;25.1.8937393
+
+      - name: Verify tools (CMD)
+        shell: cmd
+        run: |
+          if not exist "BuildToolCpp.exe" exit /b 1
+          if not exist "[BUILD]BuildEngine[Android].bat" exit /b 1
+
+      - name: Run Android build script (CMD)
+        shell: cmd
+        run: |
+          call "[BUILD]BuildEngine[Android].bat"
+
+      - name: Find APK
+        id: find_apk
+        shell: cmd
+        run: |
+          for /r %%i in (*.apk) do (
+            echo APK_PATH=%%i
+            echo APK_PATH=%%i>>%GITHUB_ENV%
+            goto :done
+          )
+          echo ERROR: APK not found!
+          exit /b 1
+          :done
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-apk
+          path: ${{ env.APK_PATH }}

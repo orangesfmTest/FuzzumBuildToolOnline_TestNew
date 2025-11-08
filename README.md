@@ -55,6 +55,7 @@ Your game must follow the standard FuzzumEngine layout:
 ```
 YourGame/
 ├── Game.project
+├── Assets/
 ├── Source/
 │   ├── Core/
 │   └── ...

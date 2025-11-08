@@ -25,7 +25,7 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
 
-      # ✅ Скачиваем standalone NDK → ./ndk/android-ndk-r25b
+      # ✅ Скачиваем standalone NDK r25b
       - name: Download Standalone NDK r25b
         run: |
           curl -L https://github.com/android/ndk/releases/download/ndk-r25b/android-ndk-r25b-windows.zip -o ndk.zip
@@ -33,24 +33,24 @@ jobs:
           7z x ndk.zip -ondk
         shell: cmd
 
-      # ✅ 🔁 Временно подменяем NDK путь в BuildSettings.json
+      # ✅ Патчим BuildSettings.json: используем ОТНОСИТЕЛЬНЫЙ путь и прямые слэши
       - name: Patch BuildSettings.json for CI
         run: |
-          $settingsPath = "GameProject\Build\BuildSettings.json"
-          if (Test-Path $settingsPath) {
-            $json = Get-Content $settingsPath | ConvertFrom-Json
-            $json.Android.NDK = "$(Get-Location)\ndk\android-ndk-r25b"
-            $json.Android.SDK = "C:\Android\android-sdk"
-            $json.Android.Java = "${{ runner.tool_cache }}\Java_Temurin-Hotspot_jdk\17.0.17-10\x64"
-            $json | ConvertTo-Json -Depth 10 | Set-Content $settingsPath
-            Write-Host "Patched NDK path to: $(Get-Location)\ndk\android-ndk-r25b"
-          } else {
-            Write-Error "BuildSettings.json not found!"
+          $path = "GameProject\Build\BuildSettings.json"
+          if (!(Test-Path $path)) {
+            Write-Error "BuildSettings.json not found at $path"
             exit 1
           }
+          $json = Get-Content $path | ConvertFrom-Json
+          # Относительный путь — работает на всех ОС и не зависит от CI-директории
+          $json.Android.NDK = "./ndk/android-ndk-r25b"
+          $json.Android.SDK = "C:/Android/android-sdk"
+          $json.Android.Java = "C:/hostedtoolcache/windows/Java_Temurin-Hotspot_jdk/17.0.17-10/x64"
+          $json | ConvertTo-Json -Depth 10 | Set-Content $path
+          Write-Host "✅ Patched NDK to: ./ndk/android-ndk-r25b"
         shell: pwsh
 
-      - name: Verify build files
+      - name: Verify build files exist
         shell: cmd
         run: |
           if not exist "BuildToolCpp.exe" exit /b 1

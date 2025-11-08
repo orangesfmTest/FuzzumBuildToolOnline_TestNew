@@ -1,0 +1,11 @@
+{
+  "Windows": {
+    "VisualStudio": "C:/Program Files/Microsoft Visual Studio/2022/Community",
+    "WindowsSDK": "10.0.22621.0"
+  },
+  "Android": {
+    "SDK": "D:/AndroidStudio_SDK",
+    "NDK": "D:/AndroidStudio_SDK/ndk/25.1.8937393",
+    "Java": "C:/Users/Nik/.jdks/corretto-17.0.13"
+  }
+}

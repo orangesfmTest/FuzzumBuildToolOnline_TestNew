@@ -41,18 +41,6 @@ jobs:
           mkdir ndk
           7z x ndk.zip -ondk
 
-      # === Gradle: безопасное кэширование (без .lock!) ===
-      - name: Cache Gradle Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches/modules-2/files-2.1
-            ~/.gradle/caches/transforms-3/files-3.1
-            ~/.gradle/caches/jars-9
-            ~/.gradle/wrapper
-          key: gradle-safe-win-v2
-          enableCrossOsArchive: true
-
       # === Патчим BuildSettings.json ===
       - name: Patch BuildSettings.json
         shell: pwsh

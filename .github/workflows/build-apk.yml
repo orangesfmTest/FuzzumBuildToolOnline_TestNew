@@ -17,7 +17,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ❌ НЕ устанавливаем NDK через SDK — только SDK и build-tools
       - name: Set up Android SDK (NO NDK!)
         uses: android-actions/setup-android@v3
         with:
@@ -26,24 +25,24 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
 
-      # ✅ Скачиваем standalone NDK r25b напрямую
+      # ✅ Скачиваем NDK через PowerShell — надёжно
       - name: Download Standalone NDK r25b
+        shell: pwsh
         run: |
-          curl -L https://github.com/android/ndk/releases/download/ndk-r25b/android-ndk-r25b-windows.zip -o ndk.zip
+          Invoke-WebRequest -Uri "https://github.com/android/ndk/releases/download/ndk-r25b/android-ndk-r25b-windows.zip" -OutFile "ndk.zip"
           mkdir ndk
           7z x ndk.zip -ondk
-        shell: cmd
 
-      # ✅ Патчим BuildSettings.json: используем относительный путь и прямые слэши
+      # ✅ Патчим BuildSettings.json — ИСПРАВЛЕНА СТРУКТУРА YAML
       - name: Patch BuildSettings.json
+        shell: pwsh
         run: |
           $path = "GameProject\Build\BuildSettings.json"
           if (!(Test-Path $path)) {
-              Write-Error "BuildSettings.json not found!"
-              exit 1
+            Write-Error "BuildSettings.json not found!"
+            exit 1
           }
           $ndkPath = "$(Get-Location)\ndk\android-ndk-r25b"
-          # Преобразуем обратные слэши в прямые — совместимость с Ninja/C++
           $ndkPath = $ndkPath -replace '\\', '/'
           $json = Get-Content $path | ConvertFrom-Json
           $json.Android.NDK = $ndkPath
@@ -51,7 +50,6 @@ jobs:
           $json.Android.Java = "C:/hostedtoolcache/windows/Java_Temurin-Hotspot_jdk/17.0.17-10/x64"
           $json | ConvertTo-Json -Depth 10 | Set-Content $path
           Write-Host "Patched NDK to: $ndkPath"
-          shell: pwsh
 
       - name: Verify tools
         shell: cmd

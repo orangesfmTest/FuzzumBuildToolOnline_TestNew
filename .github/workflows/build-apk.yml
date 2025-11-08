@@ -11,21 +11,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 🔽 Скачиваем standalone NDK напрямую из GitHub Releases
-      - name: Download NDK r25b (standalone)
-        run: |
-          curl -L https://github.com/android/ndk/releases/download/ndk-r25b/android-ndk-r25b-windows.zip -o ndk.zip
-          7z x ndk.zip -ondk
-        shell: cmd
-
-      # Устанавливаем только SDK (без NDK!)
-      - name: Set up Android SDK
+      # 🚫 НЕ устанавливаем NDK через SDK — только standalone
+      - name: Set up Android SDK (without NDK)
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: "11076708"
@@ -33,34 +26,48 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
 
-      # 🔁 Патчим environment.json: используем скачанный NDK
-      - name: Patch environment.json for CI
+      # ✅ Скачиваем standalone NDK — временно, только в CI
+      - name: Download Android NDK r25b (standalone)
         run: |
-          $ndkPath = "$(Get-Location)\ndk\android-ndk-r25b"
+          curl -L https://github.com/android/ndk/releases/download/ndk-r25b/android-ndk-r25b-windows.zip -o ndk.zip
+          7z x ndk.zip -o. -y
+        shell: cmd
+
+      # ✅ Создаём environment.json, если его нет, или обновляем
+      - name: Prepare environment.json
+        run: |
+          $ndkPath = "$(Get-Location)\android-ndk-r25b"
           $sdkPath = "C:\Android\android-sdk"
           $javaPath = "${{ runner.tool_cache }}\Java_Temurin-Hotspot_jdk\17.0.17-10\x64"
-          if (Test-Path environment.json) {
+
+          if (-not (Test-Path environment.json)) {
+            $json = @{ Android = @{ NDK = $ndkPath; SDK = $sdkPath; Java = $javaPath } }
+          } else {
             $json = Get-Content environment.json | ConvertFrom-Json
-            if ($json.Android) {
-              $json.Android.NDK = $ndkPath
-              $json.Android.SDK = $sdkPath
-              $json.Android.Java = $javaPath
-            }
-            $json | ConvertTo-Json -Depth 10 | Set-Content environment.json
+            if (-not $json.Android) { $json | Add-Member -NotePropertyName Android -NotePropertyValue @{} }
+            $json.Android.NDK = $ndkPath
+            $json.Android.SDK = $sdkPath
+            $json.Android.Java = $javaPath
           }
+          $json | ConvertTo-Json -Depth 10 | Set-Content environment.json
         shell: pwsh
+
+      # 🔍 Проверим, что clang++.exe на месте
+      - name: Verify standalone NDK
+        run: |
+          if not exist "android-ndk-r25b\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe" (
+            echo ERROR: clang++.exe not found in standalone NDK!
+            exit /b 1
+          )
+          echo NDK OK
 
       - name: Verify tools
         shell: cmd
         run: |
           if not exist "BuildToolCpp.exe" exit /b 1
           if not exist "[BUILD]BuildEngine[Android].bat" exit /b 1
-          if not exist "ndk\android-ndk-r25b\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe" (
-            echo ERROR: clang++.exe not found!
-            exit /b 1
-          )
 
-      - name: Run Android build script
+      - name: Run Android build
         shell: cmd
         run: |
           call "[BUILD]BuildEngine[Android].bat"
